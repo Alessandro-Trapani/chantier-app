@@ -8,10 +8,12 @@ import Chantiers from "./Chantiers";
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Navigate to="/chantiers" replace />} />
-      <Route path="/chantiers" element={<Chantiers />} />
-    </Routes>
+    <Router basename="/chantier-app">
+      <Routes>
+        <Route path="/" element={<Navigate to="/chantiers" replace />} />
+        <Route path="/chantiers" element={<Chantiers />} />
+      </Routes>
+    </Router>
   );
 }
 
