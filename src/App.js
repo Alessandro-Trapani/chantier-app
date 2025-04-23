@@ -4,7 +4,7 @@ import Chantiers from "./Chantiers";
 function App() {
   return (
     <Routes>
-      <Route path="/chantiers" element={<Chantiers />} />
+      <Route path="/" element={<Chantiers />} />
     </Routes>
   );
 }
