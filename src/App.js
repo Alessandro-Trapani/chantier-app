@@ -4,7 +4,8 @@ import Chantiers from "./Chantiers";
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<Chantiers />} />
+      <Route path="/" element={<Navigate to="/chantiers" replace />} />
+      <Route path="/chantiers" element={<Chantiers />} />
     </Routes>
   );
 }
