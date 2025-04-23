@@ -1,4 +1,9 @@
-import { Routes, Route } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
 import Chantiers from "./Chantiers";
 
 function App() {
