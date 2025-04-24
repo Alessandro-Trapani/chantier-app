@@ -11,11 +11,12 @@ function Chantier() {
   const [loading, setLoading] = useState(true);
   const [timeEntries, setTimeEntries] = useState([]);
   const [expenses, setExpenses] = useState([]);
+  const [currentRate, setCurrentRate] = useState(0);
+  const [currentRateInput, setCurrentRateInput] = useState("");
   const [newEntry, setNewEntry] = useState({
     date: new Date().toISOString().split("T")[0],
     arrived_at: "",
     departed_at: "",
-    hourly_rate: chantier?.hourly_rate || 0,
   });
   const [newExpense, setNewExpense] = useState({
     description: "",
@@ -23,9 +24,12 @@ function Chantier() {
   });
 
   useEffect(() => {
-    fetchChantier();
-    fetchTimeEntries();
-    fetchExpenses();
+    const fetchData = async () => {
+      await fetchChantier();
+      await fetchTimeEntries();
+      await fetchExpenses();
+    };
+    fetchData();
   }, [id]);
 
   const fetchChantier = async () => {
@@ -39,11 +43,10 @@ function Chantier() {
 
       if (error) throw error;
       setChantier(data);
+      setCurrentRate(data.current_rate || 0);
+      setCurrentRateInput(data.current_rate?.toString() || "");
     } catch (error) {
-      console.error(
-        "Erreur lors de la récupération du chantier:",
-        error.message
-      );
+      console.error("Erreur récupération chantier:", error.message);
     } finally {
       setLoading(false);
     }
@@ -60,10 +63,7 @@ function Chantier() {
       if (error) throw error;
       setTimeEntries(data || []);
     } catch (error) {
-      console.error(
-        "Erreur lors de la récupération des entrées de temps:",
-        error.message
-      );
+      console.error("Erreur récupération entrées de temps:", error.message);
     }
   };
 
@@ -76,12 +76,40 @@ function Chantier() {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setExpenses(data || []);
-    } catch (error) {
-      console.error(
-        "Erreur lors de la récupération des dépenses:",
-        error.message
+
+      const expensesWithFiles = await Promise.all(
+        data.map(async (expense) => {
+          if (expense.file_path) {
+            const {
+              data: { signedUrl },
+            } = await supabase.storage
+              .from("expense-files")
+              .createSignedUrl(expense.file_path, 3600);
+            return { ...expense, file_url: signedUrl };
+          }
+          return expense;
+        })
       );
+
+      setExpenses(expensesWithFiles || []);
+    } catch (error) {
+      console.error("Erreur récupération dépenses:", error.message);
+    }
+  };
+
+  const handleUpdateRate = async () => {
+    const newRate = parseFloat(currentRateInput) || 0;
+    try {
+      const { error } = await supabase
+        .from("chantiers")
+        .update({ current_rate: newRate })
+        .eq("id", id);
+
+      if (error) throw error;
+      setCurrentRate(newRate);
+    } catch (error) {
+      console.error("Erreur mise à jour taux:", error.message);
+      setCurrentRateInput(currentRate.toString());
     }
   };
 
@@ -95,27 +123,64 @@ function Chantier() {
       if (error) throw error;
       setTimeEntries(timeEntries.filter((entry) => entry.id !== entryId));
     } catch (error) {
-      console.error(
-        "Erreur lors de la suppression de l'entrée de temps:",
-        error.message
-      );
+      console.error("Erreur suppression entrée:", error.message);
     }
   };
 
   const deleteExpense = async (expenseId) => {
     try {
-      const { error } = await supabase
+      // Find the expense to get the file path
+      const expenseToDelete = expenses.find((e) => e.id === expenseId);
+
+      if (expenseToDelete?.file_path) {
+        // Delete the file from storage
+        const { error: storageError } = await supabase.storage
+          .from("expense-files")
+          .remove([expenseToDelete.file_path]);
+
+        if (storageError) throw storageError;
+      }
+
+      // Delete the expense from the database
+      const { error: dbError } = await supabase
         .from("expenses")
         .delete()
         .eq("id", expenseId);
 
-      if (error) throw error;
+      if (dbError) throw dbError;
+
+      // Update local state
       setExpenses(expenses.filter((expense) => expense.id !== expenseId));
     } catch (error) {
-      console.error(
-        "Erreur lors de la suppression de la dépense:",
-        error.message
-      );
+      console.error("Erreur suppression dépense:", error.message);
+      alert("Erreur lors de la suppression de la dépense. Veuillez réessayer.");
+    }
+  };
+
+  const handleFileUpload = async (expenseId, file) => {
+    if (!file) return;
+
+    try {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${expenseId}-${Date.now()}.${fileExt}`;
+      const filePath = `expenses/${expenseId}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("expense-files")
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { error: updateError } = await supabase
+        .from("expenses")
+        .update({ file_path: filePath })
+        .eq("id", expenseId);
+
+      if (updateError) throw updateError;
+
+      await fetchExpenses();
+    } catch (error) {
+      console.error("Erreur upload fichier:", error.message);
     }
   };
 
@@ -201,23 +266,21 @@ function Chantier() {
             chantier_id: id,
             arrived_at: newEntry.arrived_at,
             departed_at: newEntry.departed_at,
-            hourly_rate: parseFloat(newEntry.hourly_rate),
+            hourly_rate: currentRate,
           },
         ])
         .select();
 
       if (error) throw error;
+
       setTimeEntries([data[0], ...timeEntries]);
       setNewEntry({
+        date: new Date().toISOString().split("T")[0],
         arrived_at: "",
         departed_at: "",
-        hourly_rate: chantier?.hourly_rate || 0,
       });
     } catch (error) {
-      console.error(
-        "Erreur lors de l'ajout de l'entrée de temps:",
-        error.message
-      );
+      console.error("Erreur ajout entrée:", error.message);
     }
   };
 
@@ -230,19 +293,20 @@ function Chantier() {
           {
             chantier_id: id,
             description: newExpense.description,
-            amount: parseFloat(newExpense.amount),
+            amount: parseFloat(newExpense.amount) || 0,
           },
         ])
         .select();
 
       if (error) throw error;
+
       setExpenses([data[0], ...expenses]);
       setNewExpense({
         description: "",
         amount: "",
       });
     } catch (error) {
-      console.error("Erreur lors de l'ajout de la dépense:", error.message);
+      console.error("Erreur ajout dépense:", error.message);
     }
   };
 
@@ -269,6 +333,22 @@ function Chantier() {
               ? new Date(chantier.start_date).toLocaleDateString()
               : "Non spécifiée"}
           </p>
+          <div className="form-group">
+            <label>Taux actuel (€) :</label>
+            <div className="rate-update-container">
+              <input
+                className="taux"
+                type="number"
+                placeholder={chantier.current_rate}
+                onChange={(e) => setCurrentRateInput(e.target.value)}
+                step="0.1"
+                min="0"
+              />
+              <button onClick={handleUpdateRate} className="update-rate-button">
+                Mettre à jour
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="detail-section stats-section">
@@ -279,7 +359,7 @@ function Chantier() {
               <div className="stat-value blue">{totalHours}</div>
             </div>
             <div className="stat-card">
-              <h4>Total heures</h4>
+              <h4>Total gains</h4>
               <div className="stat-value green">{totalEarnings}</div>
             </div>
             <div className="stat-card">
@@ -321,7 +401,6 @@ function Chantier() {
                   type="time"
                   name="arrived_at"
                   value={newEntry.arrived_at}
-                  placeholder="0"
                   onChange={handleInputChange}
                   required
                 />
@@ -336,18 +415,6 @@ function Chantier() {
                   required
                 />
               </div>
-              <div className="form-group">
-                <label>Taux horaire (€) :</label>
-                <input
-                  type="number"
-                  name="hourly_rate"
-                  step="0.1"
-                  min="0"
-                  value={newEntry.hourly_rate}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
             </div>
             <button type="submit" className="action-button">
               Ajouter une entrée
@@ -357,7 +424,7 @@ function Chantier() {
           <div className="time-entries">
             <h4>Entrées de temps</h4>
             {timeEntries.length === 0 ? (
-              <p className="empty-state">Aucune entrée de temps enregistrée</p>
+              <p className="empty-state">Aucune entrée enregistrée</p>
             ) : (
               <table className="time-table">
                 <thead>
@@ -366,7 +433,6 @@ function Chantier() {
                     <th>Arrivée</th>
                     <th>Départ</th>
                     <th>Heures</th>
-                    <th>Taux</th>
                     <th>Gains</th>
                     <th>Actions</th>
                   </tr>
@@ -386,14 +452,13 @@ function Chantier() {
                         <td>{entry.arrived_at}</td>
                         <td>{entry.departed_at}</td>
                         <td>{hours}</td>
-                        <td>€{entry.hourly_rate?.toFixed(2)}</td>
                         <td>{earnings}</td>
                         <td>
                           <img
-                            onClick={() => deleteTimeEntry(entry.id)}
-                            className="delete-button"
-                            aria-label="Supprimer l'entrée"
                             src={trashcan}
+                            className="delete-button"
+                            onClick={() => deleteTimeEntry(entry.id)}
+                            aria-label="Supprimer"
                           />
                         </td>
                       </tr>
@@ -415,7 +480,6 @@ function Chantier() {
                 <input
                   type="text"
                   name="description"
-                  placeholder="Description"
                   value={newExpense.description}
                   onChange={handleExpenseChange}
                   required
@@ -428,7 +492,6 @@ function Chantier() {
                   name="amount"
                   step="0.1"
                   min="0"
-                  placeholder="0"
                   value={newExpense.amount}
                   onChange={handleExpenseChange}
                   required
@@ -439,11 +502,10 @@ function Chantier() {
               Ajouter une dépense
             </button>
           </form>
-
+          <h4>Historique</h4>
           <div className="expenses-list">
-            <h4>Historique des dépenses</h4>
             {expenses.length === 0 ? (
-              <p className="empty-state">Aucune dépense enregistrée</p>
+              <p className="empty-state">Aucune dépense</p>
             ) : (
               <table className="expense-table">
                 <thead>
@@ -451,6 +513,7 @@ function Chantier() {
                     <th>Date</th>
                     <th>Description</th>
                     <th>Montant</th>
+                    <th>Fichier</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -463,11 +526,37 @@ function Chantier() {
                       <td>{expense.description}</td>
                       <td>€{parseFloat(expense.amount).toFixed(2)}</td>
                       <td>
+                        {expense.file_url ? (
+                          <a
+                            href={expense.file_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="file-link"
+                          >
+                            📄 Voir
+                          </a>
+                        ) : (
+                          <label className="file-upload-label">
+                            <input
+                              type="file"
+                              onChange={(e) =>
+                                handleFileUpload(expense.id, e.target.files[0])
+                              }
+                              style={{ display: "none" }}
+                              accept="image/*,.pdf,.doc,.docx"
+                            />
+                            <span className="file-upload-button">
+                              + Ajouter
+                            </span>
+                          </label>
+                        )}
+                      </td>
+                      <td>
                         <img
-                          onClick={() => deleteExpense(expense.id)}
-                          className="delete-button"
-                          aria-label="Supprimer la dépense"
                           src={trashcan}
+                          className="delete-button"
+                          onClick={() => deleteExpense(expense.id)}
+                          aria-label="Supprimer"
                         />
                       </td>
                     </tr>
