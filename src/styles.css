@@ -168,6 +168,7 @@
 /* Form Styles - Using your existing variables */
 .form-container {
   max-width: 600px;
+  min-width: 200px;
   margin: 2rem auto;
   padding: 2rem;
   background: var(--secondary-bg);
@@ -299,6 +300,7 @@
   margin-top: 0;
   margin-bottom: 1rem;
 }
+
 
 .back-button {
   background: transparent;
@@ -806,4 +808,91 @@ td{
 .form-group input[type="number"] .taux {
   width: 120px;
   padding: 0.5rem;
+}
+/* -------------------- Login Page Styles -------------------- */
+
+/* Container for the login form */
+.login-container {
+  max-width: 400px; /* Limit width for better readability */
+  margin: 10vh auto; /* Center vertically and horizontally */
+  padding: 2rem;
+  background: var(--secondary-bg); /* Use secondary background color */
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); /* More prominent shadow */
+  text-align: center;
+  border: 1px solid var(--primary-accent); /* Add a border matching accent */
+}
+
+/* Heading for the login form */
+.login-container h2 {
+  color: var(--primary-accent); /* Use accent color for heading */
+  margin-bottom: 1.5rem;
+  font-size: 2rem;
+  border-bottom: 2px solid var(--text-primary); /* Underline with primary text color */
+  padding-bottom: 0.5rem;
+  display: inline-block; /* Make border only as wide as text */
+}
+
+/* Grouping for form inputs (label + input) */
+.form-group {
+  margin-bottom: 1.5rem;
+  text-align: left; /* Align labels and inputs to the left */
+}
+
+/* Labels for form inputs */
+.form-group label {
+  display: block; /* Make label take its own line */
+  margin-bottom: 0.5rem;
+  color: var(--text-light); /* Light text for labels */
+  font-weight: 500;
+  font-size: 1.1rem;
+}
+
+/* Styling for input fields (text, password) */
+
+
+/* Style inputs when focused */
+.form-group input[type="text"]:focus,
+.form-group input[type="password"]:focus {
+  outline: none;
+  border-color: var(--primary-accent); /* Accent color on focus */
+  box-shadow: 0 0 0 3px rgba(103, 174, 110, 0.4); /* Glow effect on focus */
+}
+
+/* Error message styling */
+.error-message {
+  color: #dc3545; /* Standard red for errors */
+  margin-top: 1rem;
+  font-size: 0.9em;
+  text-align: center;
+  font-weight: bold;
+}
+
+
+.login-container .action-button {
+    margin-top: 1.5rem; /* Add space above the button */
+    padding: 0.8rem 1.5rem; /* Adjust padding */
+    font-size: 1.2rem; /* Larger font size */
+    font-weight: 600;
+
+}
+.logout-button {
+  background-color: var(--secondary-bg); /* Use secondary background */
+  color: var(--text-light); /* Light text color */
+  border: 1px solid var(--primary-accent); /* Border matching accent */
+  padding: 0.6rem 1.2rem;
+  border-radius: 0.3rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+  font-size: 1rem; /* Match other button font sizes */
+  display: inline-block; /* Allows padding and margin */
+  text-align: center;
+  margin-top: 1rem; /* Add some space above if needed */
+}
+
+.logout-button:hover {
+  background-color: #dc3545; /* Red background on hover */
+  border-color: #dc3545; /* Red border on hover */
+  color: white; /* Ensure text is readable on red background */
 }

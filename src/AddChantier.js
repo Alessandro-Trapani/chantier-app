@@ -9,6 +9,7 @@ function AddChantier() {
     name: "",
     address: "",
     description: "",
+    user_id: localStorage.getItem("user_id"),
     status: "active",
   });
 

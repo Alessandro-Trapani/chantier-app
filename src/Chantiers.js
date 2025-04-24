@@ -20,7 +20,10 @@ function ChantiersList() {
   const fetchChantiers = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase.from("chantiers").select("*");
+      const { data, error } = await supabase
+        .from("chantiers")
+        .select("*")
+        .eq("user_id", localStorage.getItem("user_id"));
 
       if (error) throw error;
       setChantiers(data);
@@ -211,6 +214,16 @@ function ChantiersList() {
             </li>
           ))}
         </ul>
+        <button
+          className="logout-button"
+          onClick={() => {
+            localStorage.setItem("isAuthenticated", "false");
+            localStorage.removeItem("user_id");
+            window.location.reload();
+          }}
+        >
+          Logout
+        </button>
       </div>
 
       {showDeleteModal && (

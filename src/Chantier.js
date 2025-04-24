@@ -39,6 +39,7 @@ function Chantier() {
         .from("chantiers")
         .select("*")
         .eq("id", id)
+        .eq("user_id", localStorage.getItem("user_id"))
         .single();
 
       if (error) throw error;
@@ -311,7 +312,15 @@ function Chantier() {
   };
 
   if (loading) return <div className="loading-state">Chargement...</div>;
-  if (!chantier) return <div className="empty-state">Chantier introuvable</div>;
+  if (!chantier)
+    return (
+      <div className="empty-state">
+        <button onClick={() => navigate(-1)} className="back-button">
+          ← Retour
+        </button>
+        Chantier introuvable
+      </div>
+    );
 
   return (
     <div className="detail-container">
@@ -479,6 +488,7 @@ function Chantier() {
                 <label>Description :</label>
                 <input
                   type="text"
+                  placeholder="Description"
                   name="description"
                   value={newExpense.description}
                   onChange={handleExpenseChange}
@@ -490,6 +500,7 @@ function Chantier() {
                 <input
                   type="number"
                   name="amount"
+                  placeholder="montant"
                   step="0.1"
                   min="0"
                   value={newExpense.amount}
