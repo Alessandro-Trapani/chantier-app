@@ -154,7 +154,31 @@ function ChantiersList() {
 
   if (loading) return <div className="loading-state">Chargement...</div>;
   if (chantiers.length === 0)
-    return <div className="empty-state">Aucun chantier trouvé</div>;
+    return (
+      <>
+        <img className="logo" src={logo} alt="Logo" />
+        <div className="list-container">
+          <h2 className="list-heading">Chantiers</h2>
+          <button
+            className="action-button"
+            onClick={() => navigate("/add-chantier")}
+          >
+            Ajouter un chantier
+          </button>
+          <div className="empty-state">Aucun chantier trouvé</div>
+          <button
+            className="logout-button"
+            onClick={() => {
+              localStorage.setItem("isAuthenticated", "false");
+              localStorage.removeItem("user_id");
+              window.location.reload();
+            }}
+          >
+            Logout
+          </button>
+        </div>
+      </>
+    );
 
   return (
     <>
