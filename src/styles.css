@@ -155,6 +155,7 @@
     color: var(--text-light);
     border: none;
     
+   
     padding: 0.6rem 1.2rem;
     border-radius: 0.3rem;
     font-weight: 500;
@@ -564,8 +565,8 @@ button{
 }
 
 .action-button {
-  width: 100%;
-  margin: 0.5rem 0;
+ 
+  margin: 0.5rem ;
 }
  /* Hide all columns except first and last two in expenses table */
   
@@ -609,9 +610,7 @@ button{
   }
   
 
-  .action-button {
-    width: auto;
-  }
+
   
 }
  h4{
@@ -630,14 +629,20 @@ button{
     font-size: 1.3rem;
   }
  
-  
 
+  
   
   
   
 }
 
-
+/* Phone screens (typically < 768px) */
+@media (max-width: 767px) {
+  .action-button {
+    width: 100%;
+    margin: 0.5rem 0;
+  }
+}
 
 /* Specific responsive adjustments */
 @media (max-width: 767px) {
@@ -895,4 +900,14 @@ td{
   background-color: #dc3545; /* Red background on hover */
   border-color: #dc3545; /* Red border on hover */
   color: white; /* Ensure text is readable on red background */
+}
+
+.red-btn{
+  background-color: red;
+
+}
+
+.red-btn:hover{
+  background-color: rgb(150, 0, 0);
+
 }

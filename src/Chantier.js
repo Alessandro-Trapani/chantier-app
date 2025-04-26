@@ -15,13 +15,16 @@ function Chantier() {
   const [currentRateInput, setCurrentRateInput] = useState("");
   const [newEntry, setNewEntry] = useState({
     date: new Date().toISOString().split("T")[0],
-    arrived_at: "",
-    departed_at: "",
+    arrived_at: new Date().toTimeString().slice(0, 5),
+    departed_at: new Date().toTimeString().slice(0, 5),
   });
   const [newExpense, setNewExpense] = useState({
     description: "",
     amount: "",
   });
+  const [hasBlockedTime, setHasBlockedTime] = useState(
+    !!localStorage.getItem("blocked_arrival_time")
+  );
 
   useEffect(() => {
     const fetchData = async () => {
@@ -265,8 +268,11 @@ function Chantier() {
         .insert([
           {
             chantier_id: id,
-            arrived_at: newEntry.arrived_at,
-            departed_at: newEntry.departed_at,
+            date: newEntry.date,
+            arrived_at:
+              localStorage.getItem("blocked_arrival_time") ||
+              newEntry.arrived_at.slice(0, 5),
+            departed_at: newEntry.departed_at.slice(0, 5),
             hourly_rate: currentRate,
           },
         ])
@@ -280,6 +286,7 @@ function Chantier() {
         arrived_at: "",
         departed_at: "",
       });
+      localStorage.removeItem("blocked_arrival_time"); // Clear localStorage on submit
     } catch (error) {
       console.error("Erreur ajout entrée:", error.message);
     }
@@ -406,18 +413,60 @@ function Chantier() {
               </div>
               <div className="form-group">
                 <label>Heure d'arrivée :</label>
-                <input
-                  type="time"
-                  name="arrived_at"
-                  value={newEntry.arrived_at}
-                  onChange={handleInputChange}
-                  required
-                />
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <input
+                    type="time"
+                    name="arrived_at"
+                    step="900"
+                    id="heure_arrive"
+                    value={
+                      localStorage.getItem("blocked_arrival_time") ||
+                      newEntry.arrived_at
+                    }
+                    onChange={handleInputChange}
+                    required
+                    style={{
+                      border: hasBlockedTime ? "2px dotted blue" : "",
+                    }}
+                  />
+                </div>
+
+                <button
+                  className="action-button"
+                  type="button"
+                  onClick={() => {
+                    const now = new Date();
+                    const hours = String(now.getHours()).padStart(2, "0");
+                    const minutes = String(now.getMinutes()).padStart(2, "0");
+                    const currentTime = `${hours}:${minutes}`;
+
+                    setNewEntry((prev) => ({
+                      ...prev,
+                      arrived_at: currentTime,
+                    }));
+                    localStorage.setItem("blocked_arrival_time", currentTime);
+                    setHasBlockedTime(true); // Add this line
+                  }}
+                >
+                  Bloquer
+                </button>
+
+                <button
+                  className="red-btn action-button"
+                  type="button"
+                  onClick={() => {
+                    localStorage.removeItem("blocked_arrival_time");
+                    setHasBlockedTime(false); // Add this line
+                  }}
+                >
+                  Debloquer
+                </button>
               </div>
               <div className="form-group">
                 <label>Heure de départ :</label>
                 <input
                   type="time"
+                  step="900"
                   name="departed_at"
                   value={newEntry.departed_at}
                   onChange={handleInputChange}
@@ -425,7 +474,13 @@ function Chantier() {
                 />
               </div>
             </div>
-            <button type="submit" className="action-button">
+            <button
+              type="submit"
+              className="action-button"
+              onClick={() => {
+                setHasBlockedTime(false);
+              }}
+            >
               Ajouter une entrée
             </button>
           </form>
@@ -455,11 +510,9 @@ function Chantier() {
                     );
                     return (
                       <tr key={entry.id}>
-                        <td>
-                          {new Date(entry.created_at).toLocaleDateString()}
-                        </td>
-                        <td>{entry.arrived_at}</td>
-                        <td>{entry.departed_at}</td>
+                        <td>{new Date(entry.date).toLocaleDateString()}</td>
+                        <td>{entry.arrived_at.toString().slice(0, 5)}</td>
+                        <td>{entry.departed_at.toString().slice(0, 5)}</td>
                         <td>{hours}</td>
                         <td>{earnings}</td>
                         <td>
