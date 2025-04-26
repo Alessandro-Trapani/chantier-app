@@ -1,17 +1,17 @@
 {
   "files": {
-    "main.css": "/chantier-app/static/css/main.4c7e1098.css",
+    "main.css": "/chantier-app/static/css/main.02876381.css",
     "main.js": "/chantier-app/static/js/main.fb43f248.js",
     "static/js/952.50198c37.chunk.js": "/chantier-app/static/js/952.50198c37.chunk.js",
     "static/media/logoHD.png": "/chantier-app/static/media/logoHD.9feea5e555b02f0cd537.png",
     "static/media/red-trash-can-icon.svg": "/chantier-app/static/media/red-trash-can-icon.2e6d5b9716b1ca7e409ee96089fc6386.svg",
     "index.html": "/chantier-app/index.html",
-    "main.4c7e1098.css.map": "/chantier-app/static/css/main.4c7e1098.css.map",
+    "main.02876381.css.map": "/chantier-app/static/css/main.02876381.css.map",
     "main.fb43f248.js.map": "/chantier-app/static/js/main.fb43f248.js.map",
     "952.50198c37.chunk.js.map": "/chantier-app/static/js/952.50198c37.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.4c7e1098.css",
+    "static/css/main.02876381.css",
     "static/js/main.fb43f248.js"
   ]
 }
