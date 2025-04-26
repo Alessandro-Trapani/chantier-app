@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { redirect, useNavigate } from "react-router-dom";
 import { supabase } from "./supabaseClient";
 import "./styles.css";
 import logo from "./logoHD.png";
@@ -244,6 +244,7 @@ function ChantiersList() {
             localStorage.setItem("isAuthenticated", "false");
             localStorage.removeItem("user_id");
             window.location.reload();
+            redirect("/");
           }}
         >
           Logout

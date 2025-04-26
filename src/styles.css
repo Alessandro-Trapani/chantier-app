@@ -660,10 +660,7 @@ button{
     padding: 0.3rem;
     
   }
-  .expense-table th:first-child,
-.expense-table td:first-child {
-  display: none;
-}
+
 
 /* Adjust column widths for all remaining columns */
 .expense-table th:not(:first-child),
