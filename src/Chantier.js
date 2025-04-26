@@ -510,7 +510,13 @@ function Chantier() {
                     );
                     return (
                       <tr key={entry.id}>
-                        <td>{new Date(entry.date).toLocaleDateString()}</td>
+                        <td>
+                          {new Date(entry.date).toLocaleDateString("fr-FR", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                          })}
+                        </td>
                         <td>{entry.arrived_at.toString().slice(0, 5)}</td>
                         <td>{entry.departed_at.toString().slice(0, 5)}</td>
                         <td>{hours}</td>
