@@ -459,7 +459,7 @@ function Chantier() {
                     setHasBlockedTime(false); // Add this line
                   }}
                 >
-                  Debloquer
+                  Débloquer
                 </button>
               </div>
               <div className="form-group">
