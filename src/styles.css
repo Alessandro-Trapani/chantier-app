@@ -908,3 +908,126 @@ td{
   background-color: rgb(150, 0, 0);
 
 }
+.daily-summary-container {
+  padding: 20px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.days-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.day-card {
+  padding: 15px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out; /* Added ease-in-out for smoother transition */
+}
+
+/* Style for every other day card (even children) */
+.day-card:nth-child(even) {
+  background-color: rgba(0, 0, 0, 0.1); /* Very light gray */
+}
+.day-card:hover {
+  background-color: #e0e0e0; /* Made hover a bit more distinct */
+}
+
+.modal-overlay {
+   position: fixed;
+   top: 0;
+   left: 0;
+   right: 0;
+   bottom: 0;
+   background-color: rgba(0, 0, 0, 0.7); /* Darker overlay */
+   display: flex;
+   justify-content: center;
+   align-items: center;
+   z-index: 1000; /* Ensure it's on top of other content */
+  }
+  
+  /* The modal container itself (added in DailySummary.js) */
+  .modal {
+    background-color: var(--secondary-bg); /* Use secondary background */
+    border-radius: 8px; /* Consistent border-radius */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4); /* More prominent shadow */
+    width: 90%; /* Responsive width */
+    max-width: 600px; /* Max width for larger screens */
+    max-height: 90vh; /* Max height of the viewport */
+    overflow-y: auto; /* Enable scrolling if content overflows */
+    position: relative; /* Needed for absolute positioning of close button */
+    color: var(--text-light); /* Default text color for modal content */
+  }
+  
+  
+  /* Content area inside the modal */
+  /* Removed background-color and padding from modal-content
+     as they are now handled by the .modal class for better structure */
+  .modal-content {
+   padding: 20px; /* Padding inside the modal box */
+  }
+  
+  /* Close button */
+  .close-modal {
+   position: absolute;
+   top: 10px;
+   right: 10px;
+   background: none;
+   border: none;
+   font-size: 1.8rem; /* Slightly larger close button */
+   cursor: pointer;
+   color: var(--primary-accent); /* Use accent color for visibility */
+   transition: color 0.2s ease-in-out;
+  }
+  
+  .close-modal:hover {
+   color: var(--text-primary); /* Change color on hover */
+  }
+  
+  /* Section within the modal */
+  .modal-section {
+   margin-bottom: 20px;
+   padding-top: 10px; /* Add some space above each section */
+  }
+  
+  /* Heading for modal sections */
+  .modal-section h4 {
+   margin-top: 0; /* Remove default top margin */
+   margin-bottom: 10px;
+   border-bottom: 1px solid rgba(255, 255, 255, 0.1); /* Lighter border */
+   padding-bottom: 5px;
+   color: var(--primary-accent); /* Accent color for section headings */
+  font-size: 1.2rem;
+  }
+  
+
+  
+  /* Media query for smaller screens */
+  @media (max-width: 600px) {
+      .modal {
+          padding: 15px; /* Reduce padding on smaller screens */
+      }
+      .modal-content {
+          padding: 0; /* Remove padding from content if modal has padding */
+      }
+       .modal-section {
+          margin-bottom: 15px; /* Reduce space between sections */
+      }
+      .modal-section h4 {
+          font-size: 1.1rem; /* Slightly smaller heading */
+      }
+  }
+
+/* In your styles.css file */
+.date-part-weekday-day {
+  color: #28a745; /* Example: A shade of green */
+  font-weight: bold; /* Optional: make it stand out */
+}
+
+.date-part-month-year {
+  color: #3d3d3d; /* Example: A dark grey */
+  /* Add other styles as needed */
+}

@@ -367,6 +367,13 @@ function Chantier() {
               </button>
             </div>
           </div>
+          <button
+            onClick={() => navigate(`/chantier/${id}/daily`)}
+            className="action-button"
+            style={{ marginTop: "15px" }}
+          >
+            Voir le résumé quotidien
+          </button>
         </div>
 
         <div className="detail-section stats-section">

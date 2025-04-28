@@ -12,6 +12,7 @@ import Chantier from "./Chantier";
 // Import the new components
 import LoginPage from "./LoginPage";
 import ProtectedRoute from "./ProtectedRoute";
+import DailySummary from "./DailySummary";
 
 function App() {
   // State to track authentication status
@@ -53,6 +54,15 @@ function App() {
           element={
             <ProtectedRoute
               element={<AddChantier />}
+              isAuthenticated={isAuthenticated}
+            />
+          }
+        />
+        <Route
+          path="/chantier/:id/daily"
+          element={
+            <ProtectedRoute
+              element={<DailySummary />}
               isAuthenticated={isAuthenticated}
             />
           }
