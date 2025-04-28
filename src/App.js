@@ -4,24 +4,21 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
-import { useState, useEffect } from "react"; // Import useState and useEffect
-// Import your existing components
+import { useState, useEffect } from "react";
+
 import Chantiers from "./Chantiers";
 import AddChantier from "./AddChantier";
 import Chantier from "./Chantier";
-// Import the new components
+
 import LoginPage from "./LoginPage";
 import ProtectedRoute from "./ProtectedRoute";
 import DailySummary from "./DailySummary";
 
 function App() {
-  // State to track authentication status
-  // Initialize based on localStorage to persist login state across reloads
   const [isAuthenticated, setIsAuthenticated] = useState(
     localStorage.getItem("isAuthenticated") === "true"
   );
 
-  // Function to update authentication state and localStorage
   const setAuthStatus = (status) => {
     setIsAuthenticated(status);
     if (status) {
