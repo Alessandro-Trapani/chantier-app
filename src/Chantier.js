@@ -21,6 +21,7 @@ function Chantier() {
   const [newExpense, setNewExpense] = useState({
     description: "",
     amount: "",
+    date: new Date().toISOString().split("T")[0],
   });
   const [hasBlockedTime, setHasBlockedTime] = useState(
     !!localStorage.getItem("blocked_arrival_time")
@@ -302,6 +303,7 @@ function Chantier() {
             chantier_id: id,
             description: newExpense.description,
             amount: parseFloat(newExpense.amount) || 0,
+            date: newExpense.date,
           },
         ])
         .select();
@@ -544,6 +546,16 @@ function Chantier() {
           <form onSubmit={addExpense} className="expense-form">
             <div className="form-row">
               <div className="form-group">
+                <label>Date :</label>
+                <input
+                  type="date"
+                  name="date"
+                  value={newExpense.date}
+                  onChange={handleExpenseChange}
+                  required
+                />
+              </div>
+              <div className="form-group">
                 <label>Description :</label>
                 <input
                   type="text"
@@ -591,7 +603,12 @@ function Chantier() {
                   {expenses.map((expense) => (
                     <tr key={expense.id}>
                       <td>
-                        {new Date(expense.created_at).toLocaleDateString()}
+                        {" "}
+                        {new Date(expense.date).toLocaleDateString("fr-FR", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                        })}
                       </td>
                       <td>{expense.description}</td>
                       <td>€{parseFloat(expense.amount).toFixed(2)}</td>
