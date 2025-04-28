@@ -292,7 +292,7 @@ function DailySummary() {
                   <table className="expense-table">
                     <thead>
                       <tr>
-                        <th>Description</th>
+                        <th>Déscription</th>
                         <th>Montant</th>
                       </tr>
                     </thead>
