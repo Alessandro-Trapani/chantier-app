@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "./supabaseClient";
 import trashcan from "./red-trash-can-icon.svg";
+import gearIcon from "./gear-icon.svg";
 import "./styles.css";
 
 function Chantier() {
@@ -26,6 +27,8 @@ function Chantier() {
   const [hasBlockedTime, setHasBlockedTime] = useState(
     !!localStorage.getItem("blocked_arrival_time")
   );
+  const [editTimeEntry, setEditTimeEntry] = useState(null);
+  const [editExpense, setEditExpense] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -134,11 +137,9 @@ function Chantier() {
 
   const deleteExpense = async (expenseId) => {
     try {
-      // Find the expense to get the file path
       const expenseToDelete = expenses.find((e) => e.id === expenseId);
 
       if (expenseToDelete?.file_path) {
-        // Delete the file from storage
         const { error: storageError } = await supabase.storage
           .from("expense-files")
           .remove([expenseToDelete.file_path]);
@@ -146,7 +147,6 @@ function Chantier() {
         if (storageError) throw storageError;
       }
 
-      // Delete the expense from the database
       const { error: dbError } = await supabase
         .from("expenses")
         .delete()
@@ -154,7 +154,6 @@ function Chantier() {
 
       if (dbError) throw dbError;
 
-      // Update local state
       setExpenses(expenses.filter((expense) => expense.id !== expenseId));
     } catch (error) {
       console.error("Erreur suppression dépense:", error.message);
@@ -287,7 +286,7 @@ function Chantier() {
         arrived_at: "",
         departed_at: "",
       });
-      localStorage.removeItem("blocked_arrival_time"); // Clear localStorage on submit
+      localStorage.removeItem("blocked_arrival_time");
     } catch (error) {
       console.error("Erreur ajout entrée:", error.message);
     }
@@ -317,6 +316,89 @@ function Chantier() {
       });
     } catch (error) {
       console.error("Erreur ajout dépense:", error.message);
+    }
+  };
+
+  const updateTimeEntry = async (e) => {
+    e.preventDefault();
+    try {
+      const { error } = await supabase
+        .from("daily_hours")
+        .update({
+          date: editTimeEntry.date,
+          arrived_at: editTimeEntry.arrived_at,
+          departed_at: editTimeEntry.departed_at,
+          hourly_rate: editTimeEntry.hourly_rate,
+        })
+        .eq("id", editTimeEntry.id);
+
+      if (error) throw error;
+
+      setTimeEntries(
+        timeEntries.map((entry) =>
+          entry.id === editTimeEntry.id ? editTimeEntry : entry
+        )
+      );
+      setEditTimeEntry(null);
+    } catch (error) {
+      console.error("Erreur mise à jour entrée:", error.message);
+    }
+  };
+
+  const updateExpense = async (e) => {
+    e.preventDefault();
+    try {
+      // First handle file upload if there's a new file
+      if (editExpense.newFile) {
+        const fileExt = editExpense.newFile.name.split(".").pop();
+        const fileName = `${editExpense.id}-${Date.now()}.${fileExt}`;
+        const filePath = `expenses/${editExpense.id}/${fileName}`;
+
+        // Upload new file
+        const { error: uploadError } = await supabase.storage
+          .from("expense-files")
+          .upload(filePath, editExpense.newFile);
+
+        if (uploadError) throw uploadError;
+
+        // Delete old file if it exists
+        if (editExpense.file_path) {
+          await supabase.storage
+            .from("expense-files")
+            .remove([editExpense.file_path]);
+        }
+
+        // Update expense with new file path
+        const { error: updateError } = await supabase
+          .from("expenses")
+          .update({
+            description: editExpense.description,
+            amount: parseFloat(editExpense.amount) || 0,
+            date: editExpense.date,
+            file_path: filePath,
+          })
+          .eq("id", editExpense.id);
+
+        if (updateError) throw updateError;
+      } else {
+        // Update without changing the file
+        const { error: updateError } = await supabase
+          .from("expenses")
+          .update({
+            description: editExpense.description,
+            amount: parseFloat(editExpense.amount) || 0,
+            date: editExpense.date,
+          })
+          .eq("id", editExpense.id);
+
+        if (updateError) throw updateError;
+      }
+
+      // Refresh expenses list
+      await fetchExpenses();
+      setEditExpense(null);
+    } catch (error) {
+      console.error("Erreur mise à jour dépense:", error.message);
     }
   };
 
@@ -454,7 +536,7 @@ function Chantier() {
                       arrived_at: currentTime,
                     }));
                     localStorage.setItem("blocked_arrival_time", currentTime);
-                    setHasBlockedTime(true); // Add this line
+                    setHasBlockedTime(true);
                   }}
                 >
                   Bloquer
@@ -465,7 +547,7 @@ function Chantier() {
                   type="button"
                   onClick={() => {
                     localStorage.removeItem("blocked_arrival_time");
-                    setHasBlockedTime(false); // Add this line
+                    setHasBlockedTime(false);
                   }}
                 >
                   Débloquer
@@ -531,12 +613,20 @@ function Chantier() {
                         <td>{hours}</td>
                         <td>{earnings}</td>
                         <td>
-                          <img
-                            src={trashcan}
-                            className="delete-button"
-                            onClick={() => deleteTimeEntry(entry.id)}
-                            aria-label="Supprimer"
-                          />
+                          <div className="action-buttons">
+                            <img
+                              src={gearIcon}
+                              className="edit-button"
+                              onClick={() => setEditTimeEntry({ ...entry })}
+                              aria-label="Modifier"
+                            />
+                            <img
+                              src={trashcan}
+                              className="delete-button"
+                              onClick={() => deleteTimeEntry(entry.id)}
+                              aria-label="Supprimer"
+                            />
+                          </div>
                         </td>
                       </tr>
                     );
@@ -646,12 +736,20 @@ function Chantier() {
                         )}
                       </td>
                       <td>
-                        <img
-                          src={trashcan}
-                          className="delete-button"
-                          onClick={() => deleteExpense(expense.id)}
-                          aria-label="Supprimer"
-                        />
+                        <div className="action-buttons">
+                          <img
+                            src={gearIcon}
+                            className="edit-button"
+                            onClick={() => setEditExpense({ ...expense })}
+                            aria-label="Modifier"
+                          />
+                          <img
+                            src={trashcan}
+                            className="delete-button"
+                            onClick={() => deleteExpense(expense.id)}
+                            aria-label="Supprimer"
+                          />
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -661,6 +759,200 @@ function Chantier() {
           </div>
         </div>
       </div>
+
+      {editTimeEntry && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h3>Modifier l'entrée de temps</h3>
+            <form onSubmit={updateTimeEntry}>
+              <div className="form-group">
+                <label>Date :</label>
+                <input
+                  type="date"
+                  value={editTimeEntry.date}
+                  onChange={(e) =>
+                    setEditTimeEntry({ ...editTimeEntry, date: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Heure d'arrivée :</label>
+                <input
+                  type="time"
+                  value={editTimeEntry.arrived_at}
+                  onChange={(e) =>
+                    setEditTimeEntry({
+                      ...editTimeEntry,
+                      arrived_at: e.target.value,
+                    })
+                  }
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Heure de départ :</label>
+                <input
+                  type="time"
+                  value={editTimeEntry.departed_at}
+                  onChange={(e) =>
+                    setEditTimeEntry({
+                      ...editTimeEntry,
+                      departed_at: e.target.value,
+                    })
+                  }
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Taux horaire (€) :</label>
+                <input
+                  type="number"
+                  value={editTimeEntry.hourly_rate}
+                  onChange={(e) =>
+                    setEditTimeEntry({
+                      ...editTimeEntry,
+                      hourly_rate: parseFloat(e.target.value) || 0,
+                    })
+                  }
+                  step="0.1"
+                  min="0"
+                  required
+                />
+              </div>
+              <div className="modal-buttons">
+                <button
+                  className="confirm-button"
+                  type="delete-button"
+                  onClick={() => setEditTimeEntry(null)}
+                >
+                  Annuler
+                </button>
+                <button className="action-button" type="submit">
+                  Enregistrer
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Expense Modal */}
+      {editExpense && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h3>Modifier la dépense</h3>
+            <form onSubmit={updateExpense}>
+              <div className="form-group">
+                <label>Date :</label>
+                <input
+                  type="date"
+                  value={editExpense.date}
+                  onChange={(e) =>
+                    setEditExpense({ ...editExpense, date: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Description :</label>
+                <input
+                  type="text"
+                  value={editExpense.description}
+                  onChange={(e) =>
+                    setEditExpense({
+                      ...editExpense,
+                      description: e.target.value,
+                    })
+                  }
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Montant (€) :</label>
+                <input
+                  type="number"
+                  value={editExpense.amount}
+                  onChange={(e) =>
+                    setEditExpense({
+                      ...editExpense,
+                      amount: parseFloat(e.target.value) || 0,
+                    })
+                  }
+                  step="0.1"
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Fichier :</label>
+                {editExpense.file_url ? (
+                  <div className="file-actions">
+                    <a
+                      href={editExpense.file_url}
+                      style={{ margin: "20px" }}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="file-link"
+                    >
+                      📄 Voir le fichier actuel
+                    </a>
+                    <button
+                      type="button"
+                      className="confirm-button"
+                      onClick={async () => {
+                        try {
+                          // Remove file from storage
+                          if (editExpense.file_path) {
+                            await supabase.storage
+                              .from("expense-files")
+                              .remove([editExpense.file_path]);
+                          }
+
+                          // Update state to remove file reference
+                          setEditExpense({
+                            ...editExpense,
+                            file_path: null,
+                            file_url: null,
+                          });
+                        } catch (error) {
+                          console.error("Error removing file:", error);
+                        }
+                      }}
+                    >
+                      Supprimer
+                    </button>
+                  </div>
+                ) : (
+                  <input
+                    type="file"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        setEditExpense({
+                          ...editExpense,
+                          newFile: e.target.files[0],
+                        });
+                      }
+                    }}
+                    accept="image/*,.pdf,.doc,.docx"
+                  />
+                )}
+              </div>
+              <div className="modal-buttons">
+                <button
+                  className="confirm-button"
+                  type="button"
+                  onClick={() => setEditExpense(null)}
+                >
+                  Annuler
+                </button>
+                <button className="action-button" type="submit">
+                  Enregistrer
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
