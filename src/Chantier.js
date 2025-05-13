@@ -23,6 +23,8 @@ function Chantier() {
     description: "",
     amount: "",
     date: new Date().toISOString().split("T")[0],
+    margin: 0,
+    base_amount: "",
   });
   const [hasBlockedTime, setHasBlockedTime] = useState(
     !!localStorage.getItem("blocked_arrival_time")
@@ -213,6 +215,7 @@ function Chantier() {
     let totalMinutes = 0;
     let totalEarnings = 0;
     let totalExpensesAmount = 0;
+    let totalExpensesWithMargin = 0;
 
     timeEntries.forEach((entry) => {
       if (entry.arrived_at && entry.departed_at) {
@@ -233,7 +236,12 @@ function Chantier() {
     });
 
     expenses.forEach((expense) => {
-      totalExpensesAmount += parseFloat(expense.amount) || 0;
+      const baseAmount =
+        parseFloat(expense.base_amount) || parseFloat(expense.amount) || 0;
+      const margin = parseFloat(expense.margin) || 0;
+      const amountWithMargin = baseAmount * (1 + margin / 100);
+      totalExpensesAmount += baseAmount;
+      totalExpensesWithMargin += amountWithMargin;
     });
 
     const totalHours = Math.floor(totalMinutes / 60);
@@ -242,13 +250,22 @@ function Chantier() {
     return {
       totalHours: `${totalHours}h ${remainingMinutes}m`,
       totalEarnings: `€${totalEarnings.toFixed(2)}`,
-      totalExpenses: `€${totalExpensesAmount.toFixed(2)}`,
-      netEarnings: `€${(totalEarnings + totalExpensesAmount).toFixed(2)}`,
+      totalExpensesWithMargin: `€${totalExpensesWithMargin.toFixed(2)}`,
+      netEarnings: `€${(totalEarnings + totalExpensesWithMargin).toFixed(2)}`,
+      marginImpact: `€${(totalExpensesWithMargin - totalExpensesAmount).toFixed(
+        2
+      )}`,
     };
   };
 
-  const { totalHours, totalEarnings, totalExpenses, netEarnings } =
-    calculateTotals();
+  const {
+    totalHours,
+    totalEarnings,
+
+    totalExpensesWithMargin,
+    netEarnings,
+    marginImpact,
+  } = calculateTotals();
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -258,6 +275,33 @@ function Chantier() {
   const handleExpenseChange = (e) => {
     const { name, value } = e.target;
     setNewExpense((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleExpenseAmountChange = (e) => {
+    const { name, value } = e.target;
+    const baseAmount = parseFloat(value) || 0;
+    const margin = parseFloat(newExpense.margin) || 0;
+    const amountWithMargin = baseAmount * (1 + margin / 100);
+
+    setNewExpense((prev) => ({
+      ...prev,
+      [name]: value,
+      base_amount: value,
+      amount: amountWithMargin.toFixed(2),
+    }));
+  };
+
+  const handleExpenseMarginChange = (e) => {
+    const { value } = e.target;
+    const margin = parseFloat(value) || 0;
+    const baseAmount = parseFloat(newExpense.base_amount) || 0;
+    const amountWithMargin = baseAmount * (1 + margin / 100);
+
+    setNewExpense((prev) => ({
+      ...prev,
+      margin: value,
+      amount: amountWithMargin.toFixed(2),
+    }));
   };
 
   const addTimeEntry = async (e) => {
@@ -295,13 +339,19 @@ function Chantier() {
   const addExpense = async (e) => {
     e.preventDefault();
     try {
+      const baseAmount = parseFloat(newExpense.base_amount) || 0;
+      const margin = parseFloat(newExpense.margin) || 0;
+      const amountWithMargin = baseAmount * (1 + margin / 100);
+
       const { data, error } = await supabase
         .from("expenses")
         .insert([
           {
             chantier_id: id,
             description: newExpense.description,
-            amount: parseFloat(newExpense.amount) || 0,
+            amount: amountWithMargin,
+            base_amount: baseAmount,
+            margin: margin,
             date: newExpense.date,
           },
         ])
@@ -312,7 +362,10 @@ function Chantier() {
       setExpenses([data[0], ...expenses]);
       setNewExpense({
         description: "",
+        base_amount: "",
         amount: "",
+        margin: 0,
+        date: new Date().toISOString().split("T")[0],
       });
     } catch (error) {
       console.error("Erreur ajout dépense:", error.message);
@@ -348,6 +401,10 @@ function Chantier() {
   const updateExpense = async (e) => {
     e.preventDefault();
     try {
+      const baseAmount = parseFloat(editExpense.base_amount) || 0;
+      const margin = parseFloat(editExpense.margin) || 0;
+      const amountWithMargin = baseAmount * (1 + margin / 100);
+
       // First handle file upload if there's a new file
       if (editExpense.newFile) {
         const fileExt = editExpense.newFile.name.split(".").pop();
@@ -373,7 +430,9 @@ function Chantier() {
           .from("expenses")
           .update({
             description: editExpense.description,
-            amount: parseFloat(editExpense.amount) || 0,
+            amount: amountWithMargin,
+            base_amount: baseAmount,
+            margin: margin,
             date: editExpense.date,
             file_path: filePath,
           })
@@ -386,7 +445,9 @@ function Chantier() {
           .from("expenses")
           .update({
             description: editExpense.description,
-            amount: parseFloat(editExpense.amount) || 0,
+            amount: amountWithMargin,
+            base_amount: baseAmount,
+            margin: margin,
             date: editExpense.date,
           })
           .eq("id", editExpense.id);
@@ -466,12 +527,17 @@ function Chantier() {
               <div className="stat-value blue">{totalHours}</div>
             </div>
             <div className="stat-card">
-              <h4>Total gains</h4>
+              <h4>Total gains horaire</h4>
               <div className="stat-value green">{totalEarnings}</div>
             </div>
             <div className="stat-card">
               <h4>Total dépenses</h4>
-              <div className="stat-value red">{totalExpenses}</div>
+              <div className="stat-value red">{totalExpensesWithMargin}</div>
+            </div>
+
+            <div className="stat-card">
+              <h4>marge sur depenses</h4>
+              <div className="stat-value purple">{marginImpact}</div>
             </div>
             <div className="stat-card">
               <h4>Total net</h4>
@@ -664,16 +730,38 @@ function Chantier() {
                 />
               </div>
               <div className="form-group">
-                <label>Montant (€) :</label>
+                <label>Montant(€) :</label>
                 <input
                   type="number"
-                  name="amount"
-                  placeholder="montant"
+                  name="base_amount"
+                  placeholder="montant de base"
                   step="0.1"
                   min="0"
-                  value={newExpense.amount}
-                  onChange={handleExpenseChange}
+                  value={newExpense.base_amount}
+                  onChange={handleExpenseAmountChange}
                   required
+                />
+              </div>
+              <div className="form-group">
+                <label>Marge (%) :</label>
+                <input
+                  type="number"
+                  name="margin"
+                  placeholder="0"
+                  step="1"
+                  min="0"
+                  max="100"
+                  value={newExpense.margin}
+                  onChange={handleExpenseMarginChange}
+                />
+              </div>
+              <div className="form-group">
+                <label>total (€) :</label>
+                <input
+                  type="text"
+                  value={newExpense.amount || "0.00"}
+                  readOnly
+                  className="read-only-input"
                 />
               </div>
             </div>
@@ -691,7 +779,9 @@ function Chantier() {
                   <tr>
                     <th>Date</th>
                     <th>Description</th>
-                    <th>Montant</th>
+                    <th>Montant base</th>
+                    <th>Marge</th>
+                    <th>Montant total</th>
                     <th>Fichier</th>
                     <th>Actions</th>
                   </tr>
@@ -708,6 +798,13 @@ function Chantier() {
                         })}
                       </td>
                       <td>{expense.description}</td>
+                      <td>
+                        €
+                        {parseFloat(
+                          expense.base_amount || expense.amount
+                        ).toFixed(2)}
+                      </td>
+                      <td>{expense.margin || 0}%</td>
                       <td>€{parseFloat(expense.amount).toFixed(2)}</td>
                       <td>
                         {expense.file_url ? (
@@ -837,7 +934,6 @@ function Chantier() {
         </div>
       )}
 
-      {/* Edit Expense Modal */}
       {editExpense && (
         <div className="modal-overlay">
           <div className="modal">
@@ -869,18 +965,48 @@ function Chantier() {
                 />
               </div>
               <div className="form-group">
-                <label>Montant (€) :</label>
+                <label>Montant de base (€) :</label>
                 <input
                   type="number"
-                  value={editExpense.amount}
+                  value={editExpense.base_amount || 0}
                   onChange={(e) =>
                     setEditExpense({
                       ...editExpense,
-                      amount: parseFloat(e.target.value) || 0,
+                      base_amount: parseFloat(e.target.value),
                     })
                   }
                   step="0.1"
                   required
+                />
+              </div>
+              <div className="form-group">
+                <label>Marge (%) :</label>
+                <input
+                  type="number"
+                  value={editExpense.margin || 0}
+                  onChange={(e) =>
+                    setEditExpense({
+                      ...editExpense,
+                      margin: parseFloat(e.target.value) || 0,
+                    })
+                  }
+                  step="1"
+                  min="0"
+                  max="100"
+                />
+              </div>
+              <div className="form-group">
+                <label>Montant total (€) :</label>
+                <input
+                  type="text"
+                  value={(
+                    (parseFloat(
+                      editExpense.base_amount || editExpense.amount
+                    ) || 0) *
+                    (1 + (parseFloat(editExpense.margin) || 0) / 100)
+                  ).toFixed(2)}
+                  readOnly
+                  className="read-only-input"
                 />
               </div>
               <div className="form-group">

@@ -4,7 +4,7 @@ import { supabase } from "./supabaseClient";
 import "./styles.css";
 import logo from "./logoHD.png";
 import trashcan from "./red-trash-can-icon.svg";
-import disk from "./disk.png";
+import disk from "./red-disk.png";
 
 function ChantiersList() {
   const [chantiers, setChantiers] = useState([]);
@@ -25,7 +25,7 @@ function ChantiersList() {
         .from("chantiers")
         .select("*")
         .eq("user_id", localStorage.getItem("user_id"))
-        .eq("status", "active");
+        .eq("status", "inactive");
 
       if (error) throw error;
       setChantiers(data);
@@ -118,7 +118,7 @@ function ChantiersList() {
     try {
       const { error } = await supabase
         .from("chantiers")
-        .update({ status: "inactive" })
+        .update({ status: "active" })
         .eq("id", chantierId);
 
       if (error) throw error;
@@ -177,31 +177,14 @@ function ChantiersList() {
       <>
         <img className="logo" src={logo} alt="Logo" />
         <div className="list-container">
-          <h2 className="list-heading">Chantiers</h2>
-          <button
-            className="action-button"
-            onClick={() => navigate("/add-chantier")}
-          >
-            Ajouter un chantier
+          <button onClick={() => navigate(-1)} className="back-button">
+            ← Retour
           </button>
-          <button
-            style={{ backgroundColor: "yellow", color: "black" }}
-            className="action-button"
-            onClick={() => navigate("/Archive")}
-          >
-            Chantiers archivés
-          </button>
-          <div className="empty-state">Aucun chantier trouvé</div>
-          <button
-            className="logout-button"
-            onClick={() => {
-              localStorage.setItem("isAuthenticated", "false");
-              localStorage.removeItem("user_id");
-              window.location.reload();
-            }}
-          >
-            Logout
-          </button>
+          <h2 style={{ color: "yellow" }} className="list-heading">
+            Chantiers archives
+          </h2>
+
+          <div className="empty-state">Aucun chantier archivé</div>
         </div>
       </>
     );
@@ -210,20 +193,13 @@ function ChantiersList() {
     <>
       <img className="logo" src={logo} alt="Logo" />
       <div className="list-container">
-        <h2 className="list-heading">Chantiers</h2>
-        <button
-          className="action-button"
-          onClick={() => navigate("/add-chantier")}
-        >
-          Ajouter un chantier
+        <button onClick={() => navigate(-1)} className="back-button">
+          ← Retour
         </button>
-        <button
-          style={{ backgroundColor: "yellow", color: "black" }}
-          className="action-button"
-          onClick={() => navigate("/Archive")}
-        >
-          Chantiers archivés
-        </button>
+        <h2 style={{ color: "yellow" }} className="list-heading">
+          Chantiers archives
+        </h2>
+
         <ul className="list">
           {chantiers.map((chantier) => (
             <li
@@ -232,7 +208,7 @@ function ChantiersList() {
               onClick={() => handleClick(chantier.id)}
             >
               <div className="item-header">
-                <h3 className="item-title">
+                <h3 style={{ color: "yellow" }} className="item-title">
                   {chantier.name || "Chantier sans nom"}
                 </h3>
                 <span className="item-meta">
@@ -241,11 +217,11 @@ function ChantiersList() {
               </div>
 
               <div className="item-content">
-                <p>
+                <p style={{ color: "yellow" }}>
                   <strong>Adresse:</strong>{" "}
                   {chantier.address || "Non spécifiée"}
                 </p>
-                <p className="item-description">
+                <p style={{ color: "yellow" }} className="item-description">
                   <strong>Description:</strong>{" "}
                   {!chantier.description
                     ? "Aucune description"

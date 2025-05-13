@@ -9,7 +9,7 @@ import { useState, useEffect } from "react";
 import Chantiers from "./Chantiers";
 import AddChantier from "./AddChantier";
 import Chantier from "./Chantier";
-
+import Archive from "./Archive";
 import LoginPage from "./LoginPage";
 import ProtectedRoute from "./ProtectedRoute";
 import DailySummary from "./DailySummary";
@@ -73,7 +73,15 @@ function App() {
             />
           }
         />
-
+        <Route
+          path="/Archive"
+          element={
+            <ProtectedRoute
+              element={<Archive />}
+              isAuthenticated={isAuthenticated}
+            />
+          }
+        />
         <Route
           path="/"
           element={

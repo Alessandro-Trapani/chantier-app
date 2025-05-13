@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "./supabaseClient";
 import "./styles.css";
+import * as XLSX from "xlsx";
 
 function DailySummary() {
   const { id } = useParams();
@@ -14,6 +15,7 @@ function DailySummary() {
   const [loading, setLoading] = useState(true);
   const [chantierRate, setChantierRate] = useState(0);
   const [dayStats, setDayStats] = useState(null);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -63,21 +65,25 @@ function DailySummary() {
 
   const calculateDuration = (arrived, departed) => {
     if (!arrived || !departed) return 0;
-
     const [arrivedHours, arrivedMins] = arrived.split(":").map(Number);
     const [departedHours, departedMins] = departed.split(":").map(Number);
-
     let totalMinutes =
       departedHours * 60 + departedMins - (arrivedHours * 60 + arrivedMins);
     if (totalMinutes < 0) totalMinutes += 24 * 60;
-
     return totalMinutes;
+  };
+
+  const formatDurationFromMinutes = (totalMinutes) => {
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return `${hours}h ${minutes}m`;
   };
 
   const calculateDayStats = useCallback((timeEntries, expenses) => {
     let totalMinutes = 0;
     let totalEarnings = 0;
     let totalExpensesAmount = 0;
+    let totalExpensesWithMargin = 0;
 
     timeEntries.forEach((entry) => {
       const entryMinutes = calculateDuration(
@@ -89,10 +95,13 @@ function DailySummary() {
     });
 
     expenses.forEach((expense) => {
-      totalExpensesAmount += parseFloat(expense.amount) || 0;
+      const baseAmount =
+        parseFloat(expense.base_amount) || parseFloat(expense.amount) || 0;
+      const margin = parseFloat(expense.margin) || 0;
+      const amountWithMargin = baseAmount * (1 + margin / 100);
+      totalExpensesAmount += baseAmount;
+      totalExpensesWithMargin += amountWithMargin;
     });
-
-    const netTotal = totalEarnings + totalExpensesAmount;
 
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
@@ -101,8 +110,11 @@ function DailySummary() {
     return {
       totalHours: formattedTotalHours,
       totalEarnings: `€${totalEarnings.toFixed(2)}`,
-      totalExpenses: `€${totalExpensesAmount.toFixed(2)}`,
-      netTotal: `€${netTotal.toFixed(2)}`,
+      totalExpensesWithMargin: `€${totalExpensesWithMargin.toFixed(2)}`,
+      netEarnings: `€${(totalEarnings + totalExpensesWithMargin).toFixed(2)}`,
+      marginImpact: `€${(totalExpensesWithMargin - totalExpensesAmount).toFixed(
+        2
+      )}`,
     };
   }, []);
 
@@ -152,12 +164,103 @@ function DailySummary() {
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
     const decimalHours = totalMinutes / 60;
-    const earnings = (decimalHours * rate).toFixed(2);
+    const earnings = (decimalHours * (rate || 0)).toFixed(2);
 
     return {
       hours: `${hours}h ${minutes}m`,
       earnings: `€${earnings}`,
     };
+  };
+
+  const handleExportToExcel = async () => {
+    setExporting(true);
+    try {
+      const { data: timeEntries, error: timeEntriesError } = await supabase
+        .from("daily_hours")
+        .select("*")
+        .eq("chantier_id", id)
+        .order("date", { ascending: false })
+        .order("arrived_at", { ascending: true });
+
+      if (timeEntriesError) throw timeEntriesError;
+
+      const { data: expenses, error: expensesError } = await supabase
+        .from("expenses")
+        .select("*")
+        .eq("chantier_id", id)
+        .order("date", { ascending: false })
+        .order("created_at", { ascending: true });
+
+      if (expensesError) throw expensesError;
+
+      const sheetDataAoA = [];
+
+      // Entrées de temps section
+      const timeEntriesHeaders = [
+        "date",
+        "arrivee",
+        "depart",
+        "duree",
+        "taux horaire",
+        "gain horaire",
+      ];
+      sheetDataAoA.push(timeEntriesHeaders);
+      (timeEntries || []).forEach((entry) => {
+        const durationMinutes = calculateDuration(
+          entry.arrived_at,
+          entry.departed_at
+        );
+        const hourlyRate = parseFloat(entry.hourly_rate) || 0;
+        const hourlyGain = (durationMinutes / 60) * hourlyRate;
+        sheetDataAoA.push([
+          entry.date,
+          entry.arrived_at,
+          entry.departed_at,
+          formatDurationFromMinutes(durationMinutes),
+          hourlyRate.toFixed(2),
+          hourlyGain.toFixed(2),
+        ]);
+      });
+
+      sheetDataAoA.push([]);
+
+      // Dépenses section
+      const expensesHeaders = [
+        "date",
+        "description",
+        "montant",
+        "marge",
+        "TOT",
+      ];
+      sheetDataAoA.push(expensesHeaders);
+      (expenses || []).forEach((expense) => {
+        const baseAmount =
+          parseFloat(expense.base_amount || expense.amount) || 0;
+        const marginPercentage = parseFloat(expense.margin) || 0;
+        const totalAmount = baseAmount * (1 + marginPercentage / 100);
+        sheetDataAoA.push([
+          expense.date,
+          expense.description,
+          baseAmount.toFixed(2),
+          marginPercentage + "%",
+          totalAmount.toFixed(2),
+        ]);
+      });
+
+      const ws = XLSX.utils.aoa_to_sheet(sheetDataAoA);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Résumé Chantier");
+
+      XLSX.writeFile(
+        wb,
+        `Export_Chantier_${id}_${new Date().toISOString().slice(0, 10)}.xlsx`
+      );
+    } catch (error) {
+      console.error("Error exporting data to Excel:", error.message);
+      alert("Erreur lors de l'exportation des données: " + error.message);
+    } finally {
+      setExporting(false);
+    }
   };
 
   if (loading) return <div className="loading-state">Chargement...</div>;
@@ -166,6 +269,18 @@ function DailySummary() {
     <div className="daily-summary-container">
       <button onClick={() => navigate(-1)} className="back-button">
         ← Retour
+      </button>
+
+      <button
+        onClick={handleExportToExcel}
+        disabled={exporting}
+        style={{
+          margin: "0px 0px 20px 10px",
+          padding: "10px 15px",
+          cursor: "pointer",
+        }}
+      >
+        {exporting ? "Exportation..." : "Exporter en Excel"}
       </button>
 
       <h2>Résumé quotidien</h2>
@@ -235,13 +350,19 @@ function DailySummary() {
                     <div className="stat-card">
                       <h4>Dépenses</h4>
                       <div className="stat-value red">
-                        {dayStats.totalExpenses}
+                        {dayStats.totalExpensesWithMargin}
+                      </div>
+                    </div>
+                    <div className="stat-card">
+                      <h4>marge</h4>
+                      <div className="stat-value orange">
+                        {dayStats.marginImpact}
                       </div>
                     </div>
                     <div className="stat-card">
                       <h4>Total net</h4>
                       <div className="stat-value purple">
-                        {dayStats.netTotal}
+                        {dayStats.netEarnings}
                       </div>
                     </div>
                   </div>
@@ -268,7 +389,7 @@ function DailySummary() {
                           calculateHoursAndEarningsEntry(
                             entry.arrived_at,
                             entry.departed_at,
-                            entry.hourly_rate // Use entry's hourly rate
+                            entry.hourly_rate
                           );
                         return (
                           <tr key={entry.id}>
@@ -292,17 +413,29 @@ function DailySummary() {
                   <table className="expense-table">
                     <thead>
                       <tr>
-                        <th>Déscription</th>
-                        <th>Montant</th>
+                        <th>Description</th>
+                        <th>Montant base</th>
+                        <th>Marge</th>
+                        <th>Montant total</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {dayExpenses.map((expense) => (
-                        <tr key={expense.id}>
-                          <td>{expense.description}</td>
-                          <td>€{parseFloat(expense.amount).toFixed(2)}</td>
-                        </tr>
-                      ))}
+                      {dayExpenses.map((expense) => {
+                        const baseAmount =
+                          parseFloat(expense.base_amount || expense.amount) ||
+                          0;
+                        const margin = parseFloat(expense.margin) || 0;
+                        const totalAmount = baseAmount * (1 + margin / 100);
+
+                        return (
+                          <tr key={expense.id}>
+                            <td>{expense.description}</td>
+                            <td>€{baseAmount.toFixed(2)}</td>
+                            <td>{margin}%</td>
+                            <td>€{totalAmount.toFixed(2)}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 )}
